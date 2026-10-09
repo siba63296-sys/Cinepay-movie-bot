@@ -45,6 +45,7 @@ interface Movie {
   description: string;
   price: number;
   telegram_file_id: string;
+  movie_link?: string;
   file_type: string;
   file_size?: number;
   duration?: number;
@@ -82,10 +83,8 @@ const mockMovies: Movie[] = [
     title: 'Inception (2010) [Hindi Dual Audio]',
     description: 'Christopher Nolan sci-fi masterpiece. 1080p Web-DL Hindi + English Dolby 5.1.',
     price: 49,
-    telegram_file_id: 'BAACAgUAAxkBAAIBv2eK3b7yX9wQ09qR92x...',
-    file_type: 'video',
-    file_size: 2411724800,
-    duration: 8880,
+    telegram_file_id: 'https://t.me/c/1928374/104',
+    file_type: 'link',
     is_active: true,
     created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
     updated_at: new Date(Date.now() - 86400000 * 2).toISOString(),
@@ -95,10 +94,8 @@ const mockMovies: Movie[] = [
     title: 'Interstellar (2014) IMAX Edition',
     description: 'Mankind was born on Earth. It was never meant to die here. 4K HDR Rip.',
     price: 69,
-    telegram_file_id: 'BAACAgUAAxkBAAIBwGeK3c8zY0rT18sT83y...',
-    file_type: 'video',
-    file_size: 3824901120,
-    duration: 10140,
+    telegram_file_id: 'https://t.me/c/1928374/205',
+    file_type: 'link',
     is_active: true,
     created_at: new Date(Date.now() - 86400000).toISOString(),
     updated_at: new Date(Date.now() - 86400000).toISOString(),
@@ -108,10 +105,8 @@ const mockMovies: Movie[] = [
     title: 'Oppenheimer (2023) 1080p Full HD',
     description: 'The story of J. Robert Oppenheimer and the Manhattan Project. Academy Award Winner.',
     price: 99,
-    telegram_file_id: 'BAACAgUAAxkBAAIBwWeK3d9aZ1uU29tU94z...',
-    file_type: 'video',
-    file_size: 2901230000,
-    duration: 10800,
+    telegram_file_id: 'https://t.me/c/1928374/310',
+    file_type: 'link',
     is_active: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -254,23 +249,38 @@ app.get('/api/movies', async (req: Request, res: Response) => {
 
 app.post('/api/movies', async (req: Request, res: Response) => {
   try {
-    const { title, description, price, telegram_file_id, is_active } = req.body;
-    if (!title || price === undefined || !telegram_file_id) {
-      return res.status(400).json({ success: false, error: 'Title, price, and Telegram file_id are required' });
+    const { title, description, price, telegram_file_id, movie_link, is_active } = req.body;
+    const finalLink = movie_link || telegram_file_id;
+    if (!title || price === undefined || !finalLink) {
+      return res.status(400).json({ success: false, error: 'Title, price, and Movie Link are required' });
     }
 
     if (supabaseClient) {
-      const { data, error } = await supabaseClient
+      const insertData = {
+        title,
+        description: description || '',
+        price: Number(price),
+        telegram_file_id: finalLink,
+        file_type: 'link',
+        is_active: is_active ?? true
+      };
+
+      let { data, error } = await supabaseClient
         .from('movies')
-        .insert({
-          title,
-          description: description || '',
-          price: Number(price),
-          telegram_file_id,
-          is_active: is_active ?? true
-        })
+        .insert({ ...insertData, movie_link: finalLink })
         .select()
         .single();
+
+      if (error && error.message && error.message.includes('movie_link')) {
+        const retry = await supabaseClient
+          .from('movies')
+          .insert(insertData)
+          .select()
+          .single();
+        data = retry.data;
+        error = retry.error;
+      }
+
       if (error) throw error;
       return res.json({ success: true, movie: data });
     }
@@ -280,8 +290,9 @@ app.post('/api/movies', async (req: Request, res: Response) => {
       title,
       description: description || '',
       price: Number(price),
-      telegram_file_id,
-      file_type: 'video',
+      telegram_file_id: finalLink,
+      movie_link: finalLink,
+      file_type: 'link',
       is_active: is_active ?? true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()

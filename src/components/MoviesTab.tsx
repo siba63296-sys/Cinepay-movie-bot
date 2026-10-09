@@ -51,7 +51,7 @@ export const MoviesTab: React.FC<MoviesTabProps> = ({ movies, onRefreshData }) =
   const handleAddMovie = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !price || !fileId) {
-      setErrorMsg('Title, Price, and Telegram File ID are required.');
+      setErrorMsg('Title, Price, and Movie Link are required.');
       return;
     }
 
@@ -67,6 +67,7 @@ export const MoviesTab: React.FC<MoviesTabProps> = ({ movies, onRefreshData }) =
           price: parseFloat(price),
           description,
           telegram_file_id: fileId,
+          movie_link: fileId,
           is_active: true
         })
       });
@@ -164,7 +165,7 @@ export const MoviesTab: React.FC<MoviesTabProps> = ({ movies, onRefreshData }) =
               <tr>
                 <th className="py-3 px-4">Title & Details</th>
                 <th className="py-3 px-4">Price</th>
-                <th className="py-3 px-4">Telegram File ID</th>
+                <th className="py-3 px-4">Movie Link</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
@@ -191,14 +192,14 @@ export const MoviesTab: React.FC<MoviesTabProps> = ({ movies, onRefreshData }) =
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-2 max-w-xs">
                         <code className="text-[10px] text-neutral-400 font-mono truncate bg-neutral-950 px-2 py-1 rounded border border-neutral-800/80">
-                          {movie.telegram_file_id}
+                          {movie.movie_link || movie.telegram_file_id}
                         </code>
                         <button
-                          onClick={() => handleCopyFileId(movie.telegram_file_id)}
+                          onClick={() => handleCopyFileId(movie.movie_link || movie.telegram_file_id)}
                           className="text-neutral-500 hover:text-white shrink-0"
-                          title="Copy file_id"
+                          title="Copy Link"
                         >
-                          {copiedId === movie.telegram_file_id ? (
+                          {copiedId === (movie.movie_link || movie.telegram_file_id) ? (
                             <Check className="w-3.5 h-3.5 text-emerald-400" />
                           ) : (
                             <Copy className="w-3.5 h-3.5" />
@@ -239,10 +240,9 @@ export const MoviesTab: React.FC<MoviesTabProps> = ({ movies, onRefreshData }) =
       <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-900/30 flex items-start gap-3">
         <Film className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
         <div className="text-xs text-neutral-400 leading-relaxed">
-          <strong className="text-white">Why store Telegram file_id instead of files in Supabase?</strong><br />
-          Storing 2GB-4GB movie video files in Supabase Storage quickly exceeds free tier limits and costs bandwidth. 
-          By keeping the movie in Telegram's cloud and storing only its lightweight <code className="text-amber-300">file_id</code> string in Supabase, 
-          the bot can deliver videos to thousands of customers completely free with zero bandwidth costs!
+          <strong className="text-white">Direct Movie Link Delivery Mode:</strong><br />
+          The bot automatically delivers the direct movie access link (Telegram channel link, Google Drive, Mega, etc.) to the customer with an inline click button as soon as you verify the payment. 
+          Zero Telegram video file size limits and instant delivery!
         </div>
       </div>
 
@@ -252,7 +252,7 @@ export const MoviesTab: React.FC<MoviesTabProps> = ({ movies, onRefreshData }) =
           <div className="w-full max-w-lg rounded-2xl bg-neutral-900 border border-neutral-800 p-6 shadow-2xl">
             <h3 className="text-base font-semibold text-white mb-1">Add New Movie to Catalog</h3>
             <p className="text-xs text-neutral-400 mb-4">
-              Enter movie title, price, and the Telegram video file_id.
+              Enter movie title, price, and the direct movie access link.
             </p>
 
             {errorMsg && (
@@ -292,26 +292,26 @@ export const MoviesTab: React.FC<MoviesTabProps> = ({ movies, onRefreshData }) =
                   <label className="block text-neutral-300 mb-1 font-medium">Helper</label>
                   <button
                     type="button"
-                    onClick={generateSampleFileId}
+                    onClick={() => setFileId('https://t.me/c/1928374/' + Math.floor(Math.random() * 900 + 100))}
                     className="w-full py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-lg border border-neutral-700 transition-colors"
                   >
-                    Generate Sample File ID
+                    Insert Sample Link
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-neutral-300 mb-1 font-medium">Telegram File ID</label>
+                <label className="block text-neutral-300 mb-1 font-medium">Movie Access Link (URL)</label>
                 <input
                   type="text"
                   required
                   value={fileId}
                   onChange={(e) => setFileId(e.target.value)}
-                  placeholder="BAACAgUAAxkBAAIBv2eK3b..."
+                  placeholder="https://t.me/... or Google Drive / Mega link"
                   className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-3 py-2 text-white font-mono placeholder-neutral-500 focus:outline-none focus:border-amber-400"
                 />
                 <p className="text-[11px] text-neutral-500 mt-1">
-                  Obtained when uploading a video directly to your bot or forwarding to @ShowJsonBot.
+                  Telegram post link, Google Drive, Mega, Terabox, or web download link. Sent to customer upon verification!
                 </p>
               </div>
 

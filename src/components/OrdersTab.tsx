@@ -89,7 +89,7 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({ orders, onRefreshData }) =
       });
       const data = await res.json();
       if (data.success) {
-        setActionMessage(`Order ${order.order_code} verified! Video dispatched to customer.`);
+        setActionMessage(`Order ${order.order_code} verified! Movie link dispatched to customer.`);
         onRefreshData();
         if (selectedOrder?.order_code === order.order_code) {
           setSelectedOrder(data.order);
@@ -136,7 +136,7 @@ export const OrdersTab: React.FC<OrdersTabProps> = ({ orders, onRefreshData }) =
         <div>
           <h2 className="text-lg font-semibold text-white">Orders & Payment Verification</h2>
           <p className="text-xs text-neutral-400">
-            Manual UPI receipt verification & automatic Telegram video dispatch ledger
+            Manual UPI receipt verification & automatic Telegram movie link dispatch ledger
           </p>
         </div>
 

@@ -105,7 +105,7 @@ export const BotSimulatorTab: React.FC<BotSimulatorTabProps> = ({ movies, orders
           buttons: [
             { label: '⏳ Pending Orders', action: () => handleAdminPendingOrders() },
             { label: '🎞️ Manage Movies', action: () => handleAdminMoviesList() },
-            { label: '📤 Upload Movie Video', action: () => handleAdminUploadPrompt() }
+            { label: '➕ Add Movie Link', action: () => handleAdminUploadPrompt() }
           ]
         });
       }, 300);
@@ -128,7 +128,7 @@ export const BotSimulatorTab: React.FC<BotSimulatorTabProps> = ({ movies, orders
     setTimeout(() => {
       addMessage({
         sender: 'bot',
-        text: `ℹ️ *How to Buy Movies on CinePay (Step-by-Step):*\n\n1️⃣ Click *Browse Movies* and select your movie.\n2️⃣ A unique Order ID and dynamic UPI QR Code will be generated.\n3️⃣ Pay to UPI ID: \`${settings.upi_id}\`\n4️⃣ Tap *[I Have Paid]* and submit your 12-digit UTR/Ref.\n5️⃣ As soon as admin verifies, the bot sends the video right into this chat! 🍿`
+        text: `ℹ️ *How to Buy Movies on CinePay (Step-by-Step):*\n\n1️⃣ Click *Browse Movies* and select your movie.\n2️⃣ A unique Order ID and dynamic UPI QR Code will be generated.\n3️⃣ Pay to UPI ID: \`${settings.upi_id}\`\n4️⃣ Tap *[I Have Paid]* and submit your 12-digit UTR/Ref.\n5️⃣ As soon as admin verifies, the bot sends the movie access link right into this chat! 🍿`
       });
     }, 300);
   };
@@ -247,18 +247,18 @@ export const BotSimulatorTab: React.FC<BotSimulatorTabProps> = ({ movies, orders
       // 1. Admin confirmation
       addMessage({
         sender: 'admin_notify',
-        text: `🎉 *[ADMIN ACTION COMPLETED]*\nOrder \`${orderCode}\` verified!\nVideo successfully dispatched to Customer via \`sendVideo()\`.`
+        text: `🎉 *[ADMIN ACTION COMPLETED]*\nOrder \`${orderCode}\` verified!\nMovie access link successfully dispatched to Customer's Telegram chat.`
       });
 
-      // 2. Customer receives movie video!
+      // 2. Customer receives movie link!
       setTimeout(() => {
         addMessage({
           sender: 'bot',
-          text: `🍿 *Enjoy Your Movie!*\n\n🎬 *Title:* ${movieTitle}\n🔖 *Order Code:* \`${orderCode}\`\n\n✅ Payment verified by admin! The full streaming video has been attached below. Tap play to watch anytime!`,
+          text: `🍿 *Enjoy Your Movie!*\n\n🎬 *Title:* ${movieTitle}\n🔖 *Order Code:* \`${orderCode}\`\n\n✅ Payment verified by admin! Your movie access link is ready. Tap the link or button below to watch/download anytime!`,
           videoCard: {
             title: movieTitle,
             price: 49,
-            fileId: 'BAACAgUAAxkBAAIBv2eK3b7yX9wQ09qR92x... (Saved Telegram file_id)'
+            fileId: 'https://t.me/c/1928374/' + Math.floor(Math.random() * 900 + 100)
           }
         });
       }, 600);
@@ -300,7 +300,7 @@ export const BotSimulatorTab: React.FC<BotSimulatorTabProps> = ({ movies, orders
   const handleAdminUploadPrompt = () => {
     addMessage({
       sender: 'bot',
-      text: `📤 *Upload Movie Video:*\n\nSend or forward the video file directly to this bot.\nThe bot captures the Telegram \`file_id\` automatically.\nThen it asks for Title, Price, and Description.`
+      text: `➕ *Add New Movie (With Link):*\n\nReply with:\n\`Title | Price | Movie Link | Description\`\n\n👉 *Example:*\n\`Pushpa 2 | 49 | https://t.me/yourchannel/123 | Full HD Hindi\``
     });
   };
 

@@ -26,21 +26,26 @@ CREATE TABLE IF NOT EXISTS public.customers (
 
 -- ====================================================================
 -- 3. TABLE: movies
--- Storing movie title, price, description, telegram file_id, active status
+-- Storing movie title, price, description, movie_link, active status
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.movies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
     description TEXT,
     price NUMERIC(10, 2) NOT NULL CHECK (price >= 0),
-    telegram_file_id TEXT NOT NULL,
-    file_type TEXT DEFAULT 'video' NOT NULL CHECK (file_type IN ('video', 'document')),
+    movie_link TEXT, -- direct movie link or channel file link
+    telegram_file_id TEXT, -- backwards compatibility
+    file_type TEXT DEFAULT 'link' NOT NULL,
     duration INTEGER,
     file_size BIGINT,
     is_active BOOLEAN DEFAULT true NOT NULL,
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Safe migration if table already exists in Supabase:
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS movie_link TEXT;
+ALTER TABLE public.movies ALTER COLUMN telegram_file_id DROP NOT NULL;
 
 -- ====================================================================
 -- 4. TABLE: orders

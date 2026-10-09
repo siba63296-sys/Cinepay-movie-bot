@@ -97,7 +97,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ movies, orders, status
           <div className="text-2xl sm:text-3xl font-bold text-emerald-400 font-mono tabular-nums">
             {deliveredOrders.length}
           </div>
-          <div className="text-xs text-neutral-500 mt-1">Sent via sendVideo API</div>
+          <div className="text-xs text-neutral-500 mt-1">Delivered via Direct Link</div>
         </div>
       </div>
 
@@ -105,7 +105,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ movies, orders, status
       <div className="rounded-xl border border-neutral-800 bg-neutral-900/40 p-6">
         <h2 className="text-base font-semibold text-white mb-1">Production Workflow Architecture</h2>
         <p className="text-xs text-neutral-400 mb-6">
-          How movies, UPI payments, Telegram file IDs, and Supabase data communicate securely
+          How movies, UPI payments, movie links, and Supabase data communicate securely
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -135,9 +135,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ movies, orders, status
 
           <div className="p-4 rounded-lg bg-neutral-950 border border-neutral-800">
             <div className="text-xs font-mono text-amber-400 mb-1">Step 4 · Auto Delivery</div>
-            <div className="text-sm font-semibold text-white mb-1">Instant Video Send</div>
+            <div className="text-sm font-semibold text-white mb-1">Instant Link Send</div>
             <p className="text-xs text-neutral-400">
-              Bot fetches the Telegram <code className="text-sky-300">file_id</code> from Supabase and executes <code className="text-sky-300">sendVideo()</code> to customer. Video plays instantly in Telegram!
+              Bot fetches the saved movie access link from Supabase and sends it directly to customer's chat with an instant watch/download button!
             </p>
           </div>
         </div>

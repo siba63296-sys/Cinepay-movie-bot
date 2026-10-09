@@ -4,6 +4,7 @@ export interface Movie {
   description: string;
   price: number;
   telegram_file_id: string;
+  movie_link?: string;
   file_type?: string;
   file_size?: number;
   duration?: number;

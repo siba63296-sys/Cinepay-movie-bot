@@ -288,6 +288,94 @@ if (TELEGRAM_BOT_TOKEN) {
   });
 
   // --------------------------------------------------------------------------
+  // COMMAND: /addmovie (Direct command for admin to add movie with link)
+  // --------------------------------------------------------------------------
+  bot.command('addmovie', async (ctx) => {
+    if (!isAdmin(ctx)) {
+      return ctx.reply('⛔ Access Denied. Admin only.');
+    }
+    const rawText = ctx.message.text.replace(/^\/addmovie\s*/i, '').trim();
+    if (!rawText) {
+      adminSessions.set(ctx.from.id, { action: 'awaiting_movie_link_details' });
+      return ctx.replyWithMarkdown(
+`➕ *Add New Movie (With Link):*
+
+Reply with:
+\`Title | Price | Movie Link | Description\`
+
+👉 *Example:*
+\`Pushpa 2 | 49 | https://t.me/yourchannel/123 | 1080p Full HD Hindi Dubbed\``,
+        Markup.inlineKeyboard([[Markup.button.callback('❌ Cancel', 'admin_dashboard')]])
+      );
+    }
+
+    const parts = rawText.split('|').map(s => s.trim());
+    if (parts.length < 3) {
+      return ctx.reply('⚠️ Format: `/addmovie Title | Price | Movie Link | Description`', { parse_mode: 'Markdown' });
+    }
+
+    const title = parts[0];
+    const price = parseFloat(parts[1]);
+    const movieLink = parts[2];
+    const description = parts[3] || 'Full HD Movie';
+
+    if (isNaN(price) || price < 0) {
+      return ctx.reply('⚠️ Invalid price! Please enter a valid number (e.g. 49).');
+    }
+
+    if (!supabase) {
+      return ctx.reply('❌ Supabase database is not connected.');
+    }
+
+    try {
+      const insertData = {
+        title,
+        price,
+        description,
+        telegram_file_id: movieLink,
+        file_type: 'link',
+        is_active: true
+      };
+
+      let { data, error } = await supabase
+        .from('movies')
+        .insert({ ...insertData, movie_link: movieLink })
+        .select()
+        .single();
+
+      if (error && error.message && error.message.includes('movie_link')) {
+        const retry = await supabase
+          .from('movies')
+          .insert(insertData)
+          .select()
+          .single();
+        data = retry.data;
+        error = retry.error;
+      }
+
+      if (error) throw error;
+
+      return ctx.replyWithMarkdown(
+`🎉 *Movie Added Successfully!*
+
+🎬 *Title:* ${data.title}
+💰 *Price:* ₹${data.price}
+🔗 *Link:* ${movieLink}
+📝 *Description:* ${data.description}
+🟢 *Status:* Active for all customers!
+
+Customers will now receive this link automatically after payment verification!`,
+        Markup.inlineKeyboard([
+          [Markup.button.callback('🎞️ Manage Movies', 'adm_manage_movies')],
+          [Markup.button.callback('⚡ Admin Panel', 'admin_dashboard')]
+        ])
+      );
+    } catch (e) {
+      return ctx.reply(`❌ Failed to add movie: ${e.message}`);
+    }
+  });
+
+  // --------------------------------------------------------------------------
   // CUSTOMER MENU HANDLERS
   // --------------------------------------------------------------------------
   bot.action('menu_movies', async (ctx) => {
@@ -344,9 +432,9 @@ if (TELEGRAM_BOT_TOKEN) {
 3️⃣ *Payment:* Pay using Google Pay, PhonePe, Paytm, or any UPI app to:
    \`${upiId}\`
 4️⃣ *Confirm:* Click the *[I Have Paid]* button and send your 12-digit UTR/Ref number or screenshot.
-5️⃣ *Instant Delivery:* As soon as our admin confirms payment, the bot sends the movie video directly to this chat! 🍿
+5️⃣ *Instant Delivery:* As soon as our admin confirms payment, the bot sends the movie link directly to this chat! 🍿
 
-*Note:* Video files stay stored safely in Telegram. You can stream or save them anytime!`;
+*Note:* You can watch or download the movie anytime using the access link!`;
 
     await ctx.replyWithMarkdown(guideText, Markup.inlineKeyboard([
       [Markup.button.callback('🎬 Browse Movies Now', 'menu_movies')],
@@ -632,12 +720,13 @@ Our admin will verify it and release your movie immediately!`
 
     // Guard against duplicate delivery
     if (order.status === 'delivered') {
-      return ctx.reply(`⚠️ Order \`${orderCode}\` has ALREADY been delivered! Prevented duplicate video dispatch.`, { parse_mode: 'Markdown' });
+      return ctx.reply(`⚠️ Order \`${orderCode}\` has ALREADY been delivered! Prevented duplicate delivery dispatch.`, { parse_mode: 'Markdown' });
     }
 
     const movie = order.movies;
-    if (!movie || !movie.telegram_file_id) {
-      return ctx.reply(`❌ Cannot deliver: Movie does not have a valid Telegram file_id in Supabase!`);
+    const movieLink = movie?.movie_link || movie?.telegram_file_id;
+    if (!movieLink) {
+      return ctx.reply(`❌ Cannot deliver: Movie does not have a valid link saved in Supabase!`);
     }
 
     // Step 1: Update order status to paid first
@@ -651,22 +740,38 @@ Our admin will verify it and release your movie immediately!`
       })
       .eq('order_code', orderCode);
 
-    // Step 2: Deliver video directly to Customer's Telegram
+    // Step 2: Deliver movie link directly to Customer's Telegram
     try {
-      await ctx.reply(`⏳ Sending video file to customer (ID: \`${order.customer_telegram_id}\`)...`, { parse_mode: 'Markdown' });
+      await ctx.reply(`⏳ Sending movie link to customer (ID: \`${order.customer_telegram_id}\`)...`, { parse_mode: 'Markdown' });
 
-      // Deliver the movie video stored in Telegram
-      await bot.telegram.sendVideo(order.customer_telegram_id, movie.telegram_file_id, {
-        caption: 
+      let webLink = movieLink.trim();
+      if (webLink.startsWith('t.me/')) {
+        webLink = `https://${webLink}`;
+      }
+      const isHttpUrl = webLink.startsWith('http://') || webLink.startsWith('https://');
+
+      const deliveryMessage = 
 `🍿 *Enjoy Your Movie!*
 
-🎬 *Title:* ${movie.title}
+🎬 *Movie:* ${movie.title}
 💰 *Paid:* ₹${order.amount}
 🔖 *Order Code:* \`${order.order_code}\`
 
-Thank you for purchasing with CinePay! The video is attached above. You can stream or save it anytime.`,
+━━━━━━━━━━━━━━━━━━━━
+🔗 *Your Movie Access Link:*
+${movieLink}
+━━━━━━━━━━━━━━━━━━━━
+
+✅ Your payment has been verified by admin!
+Tap the link above or click the button below to watch or download your movie anytime. 🍿`;
+
+      const buttons = isHttpUrl
+        ? [[Markup.button.url('🍿 Open / Watch Movie Link', webLink)]]
+        : [];
+
+      await bot.telegram.sendMessage(order.customer_telegram_id, deliveryMessage, {
         parse_mode: 'Markdown',
-        supports_streaming: true
+        ...Markup.inlineKeyboard(buttons)
       });
 
       // Step 3: Record delivered status in Supabase
@@ -687,7 +792,7 @@ Thank you for purchasing with CinePay! The video is attached above. You can stre
 • Customer ID: \`${order.customer_telegram_id}\`
 • Delivered At: ${new Date().toLocaleTimeString()}
 
-The movie has been sent directly to the customer's Telegram.`
+The movie link has been sent directly to the customer's Telegram.`
       );
 
       // Audit log in admin_logs
@@ -699,14 +804,13 @@ The movie has been sent directly to the customer's Telegram.`
       });
 
     } catch (deliveryErr) {
-      console.error('Failed to deliver movie to customer:', deliveryErr);
+      console.error('Failed to deliver movie link to customer:', deliveryErr);
       await ctx.reply(
-`⚠️ *Delivery Warning:* Payment was marked verified, but sending the video failed!
+`⚠️ *Delivery Warning:* Payment was marked verified, but sending the message failed!
 Reason: ${deliveryErr.message}
 
 *Common causes:*
 1. Customer has blocked the bot or deleted chat.
-2. File ID is invalid or bot has no permission to send it.
 Please contact customer directly: \`${order.customer_telegram_id}\``,
         { parse_mode: 'Markdown' }
       );
@@ -848,16 +952,19 @@ This action cannot be undone. Any existing orders referencing this movie will be
     await ctx.answerCbQuery();
     if (!isAdmin(ctx)) return;
 
-    adminSessions.set(ctx.from.id, { action: 'awaiting_movie_video', step: 1 });
+    adminSessions.set(ctx.from.id, { action: 'awaiting_movie_link_details' });
 
     await ctx.replyWithMarkdown(
-`📤 *Upload Movie Video:*
+`➕ *Add New Movie (With Link):*
 
-1. Send or forward the **video file** directly to this bot right now.
-2. The bot will automatically capture the Telegram \`file_id\`.
-3. Then it will ask you for Title, Price, and Description.
+Please reply to this message with:
+\`Title | Price | Movie Link | Description\`
 
-👉 *Send the video now...*`
+👉 *Example:*
+\`Pushpa 2 | 49 | https://t.me/yourchannel/123 | 1080p Full HD Hindi Dubbed\`
+
+*(Note: Link can be any Telegram post/file link, Google Drive, Mega, or streaming link)*`,
+      Markup.inlineKeyboard([[Markup.button.callback('❌ Cancel', 'admin_dashboard')]])
     );
   });
 
@@ -937,51 +1044,24 @@ Or click Cancel:`,
     if (isAdmin(ctx) && adminSessions.has(senderId)) {
       const session = adminSessions.get(senderId);
 
-      // Step A: Admin uploads video
-      if (session.action === 'awaiting_movie_video') {
-        const video = ctx.message.video || (ctx.message.document?.mime_type?.startsWith('video/') ? ctx.message.document : null);
-
-        if (!video) {
-          return ctx.reply('⚠️ Please upload a valid video file. Documents with non-video formats cannot be streamed by Telegram.');
-        }
-
-        const fileId = video.file_id;
-        const fileSize = video.file_size;
-        const duration = video.duration || 0;
-
-        // Advance to step 2: Request metadata
-        adminSessions.set(senderId, {
-          action: 'awaiting_movie_details',
-          fileId,
-          fileSize,
-          duration
-        });
-
-        return ctx.replyWithMarkdown(
-`✅ *Video Received & Telegram File ID Saved!*
-File ID: \`${fileId.slice(0, 20)}...\`
-
-Now, please reply with the movie metadata in this format:
-\`Title | Price | Description\`
-
-Example:
-\`KGF Chapter 2 | 49 | Action thriller movie Hindi Dual Audio 1080p\``
-        );
-      }
-
-      // Step B: Admin replies with Title | Price | Description
-      if (session.action === 'awaiting_movie_details' && ctx.message.text) {
+      // Step A: Admin adds movie with Link: Title | Price | Movie Link | Description
+      if (session.action === 'awaiting_movie_link_details' && ctx.message.text) {
         const parts = ctx.message.text.split('|').map(s => s.trim());
-        if (parts.length < 2) {
-          return ctx.reply('⚠️ Invalid format. Please use: `Title | Price | Description`');
+        if (parts.length < 3) {
+          return ctx.reply('⚠️ Invalid format. Please use:\n`Title | Price | Movie Link | Description`');
         }
 
         const title = parts[0];
         const price = parseFloat(parts[1]);
-        const description = parts[2] || '';
+        const movieLink = parts[2];
+        const description = parts[3] || 'Full HD Movie';
 
         if (isNaN(price) || price < 0) {
           return ctx.reply('⚠️ Invalid price! Please enter a valid number (e.g., 49 or 99).');
+        }
+
+        if (!movieLink) {
+          return ctx.reply('⚠️ Movie link is required.');
         }
 
         if (!supabase) {
@@ -989,34 +1069,45 @@ Example:
         }
 
         try {
-          const { data, error } = await supabase
+          const insertData = {
+            title,
+            price,
+            description,
+            telegram_file_id: movieLink,
+            file_type: 'link',
+            is_active: true
+          };
+
+          let { data, error } = await supabase
             .from('movies')
-            .insert({
-              title,
-              price,
-              description,
-              telegram_file_id: session.fileId,
-              file_type: 'video',
-              file_size: session.fileSize || null,
-              duration: session.duration || null,
-              is_active: true
-            })
+            .insert({ ...insertData, movie_link: movieLink })
             .select()
             .single();
+
+          if (error && error.message && error.message.includes('movie_link')) {
+            const retry = await supabase
+              .from('movies')
+              .insert(insertData)
+              .select()
+              .single();
+            data = retry.data;
+            error = retry.error;
+          }
 
           if (error) throw error;
 
           adminSessions.delete(senderId);
 
           return ctx.replyWithMarkdown(
-`🎉 *Movie Added Successfully to Supabase!*
+`🎉 *Movie Added Successfully!*
 
 🎬 *Title:* ${data.title}
 💰 *Price:* ₹${data.price}
+🔗 *Link:* ${movieLink}
 📝 *Description:* ${data.description}
-🟢 *Status:* Active (Visible to all customers)
+🟢 *Status:* Active for all customers!
 
-Customers can now browse and purchase this movie immediately!`,
+Customers will now receive this link automatically after payment verification!`,
             Markup.inlineKeyboard([
               [Markup.button.callback('🎞️ Manage Movies', 'adm_manage_movies')],
               [Markup.button.callback('⚡ Admin Panel', 'admin_dashboard')]
@@ -1136,7 +1227,7 @@ async function renderMoviesList(ctx) {
 `🍿 *${movie.title}*
 💰 *Price:* ₹${movie.price}
 📝 ${movie.description || 'Full HD Movie'}
-🎥 *Format:* Telegram Streaming Video`;
+🔗 *Access:* Direct Watch / Download Link`;
 
     await ctx.replyWithMarkdown(cardText, Markup.inlineKeyboard([
       [Markup.button.callback(`💳 Buy Now (₹${movie.price})`, `buy_${movie.id}`)]

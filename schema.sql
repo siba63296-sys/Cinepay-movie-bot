@@ -23,23 +23,28 @@ COMMENT ON TABLE public.customers IS 'Stores Telegram customers who interact wit
 
 -- ====================================================================
 -- 3. TABLE: movies
--- Stores movies catalog with Telegram file_ids (files stay on Telegram)
+-- Stores movies catalog with direct access links (Drive, Mega, Telegram post, Stream)
 -- ====================================================================
 CREATE TABLE IF NOT EXISTS public.movies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
     description TEXT,
     price NUMERIC(10, 2) NOT NULL CHECK (price >= 0),
-    telegram_file_id TEXT NOT NULL,
-    file_type TEXT DEFAULT 'video' NOT NULL CHECK (file_type IN ('video', 'document')),
-    duration INTEGER, -- duration in seconds if available
-    file_size BIGINT, -- file size in bytes
+    movie_link TEXT, -- direct movie link or channel file link
+    telegram_file_id TEXT, -- backwards compatibility with existing rows/queries
+    file_type TEXT DEFAULT 'link' NOT NULL,
+    duration INTEGER, -- duration in minutes/seconds if available
+    file_size BIGINT, -- file size in bytes if available
     is_active BOOLEAN DEFAULT true NOT NULL,
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
-COMMENT ON TABLE public.movies IS 'Catalog of movies with telegram video file_id and active status';
+-- Safe migration if table was already created earlier:
+ALTER TABLE public.movies ADD COLUMN IF NOT EXISTS movie_link TEXT;
+ALTER TABLE public.movies ALTER COLUMN telegram_file_id DROP NOT NULL;
+
+COMMENT ON TABLE public.movies IS 'Catalog of movies with access links and active status';
 
 -- ====================================================================
 -- 4. TABLE: orders
