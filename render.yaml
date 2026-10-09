@@ -1,0 +1,32 @@
+# Render Blueprint Specification for CinePay Telegram Bot
+# Learn more at https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: cinepay-movie-bot
+    env: node
+    plan: free
+    region: singapore # Choose singapore, oregon, frankfurt, etc.
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20.x
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+        # Enter your Telegram Bot Token from @BotFather
+      - key: ADMIN_TELEGRAM_ID
+        sync: false
+        # Enter your Numeric Telegram ID from @userinfobot
+      - key: SUPABASE_URL
+        sync: false
+        # https://your-project.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+        # Service Role Secret Key (from Supabase Project Settings -> API)
+      - key: UPI_ID
+        value: cinepay@upi
+      - key: UPI_NAME
+        value: CinePay Movies

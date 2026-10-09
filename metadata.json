@@ -1,0 +1,8 @@
+{
+  "name": "CinePay - Paid Movie Telegram Bot & Admin Hub",
+  "description": "Production-ready Paid Movie Telegram Bot with Telegraf, Supabase PostgreSQL, UPI payments, automatic video delivery, and Render deployment manager.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
